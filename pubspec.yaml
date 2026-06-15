@@ -1,0 +1,57 @@
+name: medley
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  # FIX: Adjusted Dart SDK bounds to match modern stable compiler limits
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # Firebase & Backend
+  firebase_core: ^3.0.0
+  firebase_auth: ^5.0.0
+  cloud_firestore: ^5.0.0
+  firebase_storage: ^12.0.0
+
+  # State Management & Providers
+  provider: ^6.1.2
+
+  # Date & Time
+  intl: ^0.19.0
+  timeago: ^3.6.1
+
+  # Networking & Connectivity
+  connectivity_plus: ^6.0.3
+  http: ^1.2.1
+
+  # Image Handling
+  image_picker: ^1.1.2
+  cached_network_image: ^3.3.1
+
+  # UI Enhancements
+  badges: ^3.1.2
+  shimmer: ^3.0.0      # FIX: Downgraded to match your package environment constraints
+  flutter_svg: ^2.0.10
+
+  # Utilities
+  uuid: ^4.3.3
+  permission_handler: any
+  device_info_plus: any
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/

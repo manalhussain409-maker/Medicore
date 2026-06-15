@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "267467914482",
+    "project_id": "medzone-84ccc",
+    "storage_bucket": "medzone-84ccc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:267467914482:android:34aa8af0d39283f006646b",
+        "android_client_info": {
+          "package_name": "com.example.health_and_doctor_appointment"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB1JLWMfEaSdI6kWBaGHufQC1qZjZyFu7g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:267467914482:android:9667325cfb6741bc06646b",
+        "android_client_info": {
+          "package_name": "com.example.med_zone"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB1JLWMfEaSdI6kWBaGHufQC1qZjZyFu7g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:267467914482:android:e14e74ec2d6b26ac06646b",
+        "android_client_info": {
+          "package_name": "com.example.medliy"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB1JLWMfEaSdI6kWBaGHufQC1qZjZyFu7g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
