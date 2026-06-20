@@ -12,7 +12,7 @@ class PrimaryButton extends StatelessWidget {
   final double borderRadius;
 
   const PrimaryButton({
-    Key? key,
+    super.key,
     required this.label,
     required this.onPressed,
     this.isLoading = false,
@@ -21,7 +21,7 @@ class PrimaryButton extends StatelessWidget {
     this.width,
     this.height = 52,
     this.borderRadius = 12,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +71,7 @@ class SecondaryButton extends StatelessWidget {
   final double borderRadius;
 
   const SecondaryButton({
-    Key? key,
+    super.key,
     required this.label,
     required this.onPressed,
     this.borderColor = const Color(0xFF00796B),
@@ -79,7 +79,7 @@ class SecondaryButton extends StatelessWidget {
     this.width,
     this.height = 52,
     this.borderRadius = 12,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -117,14 +117,14 @@ class CustomIconButton extends StatelessWidget {
   final double padding;
 
   const CustomIconButton({
-    Key? key,
+    super.key,
     required this.icon,
     required this.onPressed,
     this.backgroundColor = const Color(0xFF00796B),
     this.iconColor = Colors.white,
     this.size = 50,
     this.padding = 12,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

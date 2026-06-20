@@ -1,3 +1,5 @@
+import '../utils/firestore_utils.dart';
+
 class ChatRoomModel {
   final String id;
   final List<String> participants;
@@ -25,9 +27,7 @@ class ChatRoomModel {
       participants: List<String>.from(map['participants'] ?? []),
       participantNames: map['participantNames'] ?? 'Unknown User',
       lastMessage: map['lastMessage'] ?? 'No messages yet',
-      lastMessageTime: DateTime.parse(
-        map['lastMessageTime'] ?? DateTime.now().toIso8601String(),
-      ),
+      lastMessageTime: parseFirestoreDateOrNow(map['lastMessageTime']),
       unreadCount: map['unreadCount'] ?? 0,
       participantImageUrl: map['participantImageUrl'],
       isActive: map['isActive'] ?? true,

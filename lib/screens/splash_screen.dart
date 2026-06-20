@@ -1,6 +1,11 @@
 import 'dart:async';
-import 'dart:ui'; // Required for ImageFilter backdrop blur
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../services/auth_service.dart';
+import '../services/user_service.dart';
+import 'admin_home.dart';
+import 'doctor_home.dart';
+import 'patient_home_refactored.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -9,9 +14,12 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  final AuthService _authService = AuthService();
+  final UserService _userService = UserService();
 
   @override
   void initState() {
@@ -27,14 +35,59 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     );
 
     _animationController.forward();
+    _navigateAfterSplash();
+  }
 
-    // ROUTING REDIRECT TRIGGER:
-    Timer(const Duration(milliseconds: 3500), () {
-      if (mounted) {
-        // Safely navigate forward to the named route and clear the history stack
-        Navigator.pushReplacementNamed(context, '/login');
+  Future<void> _navigateAfterSplash() async {
+    await Future.delayed(const Duration(milliseconds: 2800));
+    if (!mounted) return;
+
+    final User? user = _authService.currentUser;
+    if (user != null) {
+      final role = await _authService.getUserRole(user.uid);
+      if (!mounted) return;
+
+      if (role == 'Patient') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const PatientHomeScreenRefactored(),
+          ),
+        );
+        return;
       }
-    });
+      if (role == 'Doctor') {
+        final profile = await _userService.getUserById(user.uid);
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => DoctorHomeScreen(
+              loggedInDoctorId: user.uid,
+              loggedInDoctorName: profile?.name ?? 'Doctor',
+            ),
+          ),
+        );
+        return;
+      }
+      if (role == 'Admin') {
+        final profile = await _userService.getUserById(user.uid);
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => AdminHomeScreen(
+              loggedInDoctorId: user.uid,
+              loggedInDoctorName: profile?.name ?? 'Admin',
+              userRole: 'Admin',
+            ),
+          ),
+        );
+        return;
+      }
+    }
+
+    Navigator.pushReplacementNamed(context, '/login');
   }
 
   @override
@@ -46,135 +99,106 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          // 1. Full Screen Mobile Background Image with BoxFit cover layout
-          Positioned.fill(
-            child: Image.asset(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF00796B),
+              Color(0xFF004D40),
+              Color(0xFF00695C),
+            ],
+          ),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
               'assets/images/splash_background.png',
               fit: BoxFit.cover,
-              // If you haven't added the image asset yet and it throws an error,
-              // you can temporarily replace this Image.asset with a Solid Color container:
-              // color: const Color(0xFFF4F9F8),
+              errorBuilder: (context, error, stackTrace) => const SizedBox(),
             ),
-          ),
-
-          // 2. BackdropFilter providing soft background blur intensity
-          Positioned.fill(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
-              child: Container(
-                color: Colors.black.withOpacity(0.0), // Invisible canvas surface requirement
-              ),
-            ),
-          ),
-
-          // 3. Main Dynamic Animated Layout Content Context
-          SafeArea(
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Spacer(flex: 3),
-
-                    // 4. Custom Medical Logo Stack Design with Shadow Elements
-                    Container(
-                      width: 160,
-                      height: 160,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
-                        border: Border.all(
-                          color: const Color(0xFFD4AF37), // Soft Gold Outline
-                          width: 3,
-                        ),
-                      ),
-                      child: Center(
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            Icon(
-                              Icons.favorite,
-                              size: 85,
-                              color: const Color(0xFF00796B).withOpacity(0.2),
-                            ),
-                            const Icon(
-                              Icons.local_hospital,
-                              size: 55,
-                              color: Color(0xFF00796B), // Deep Teal Action Fill
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 40),
-
-                    // 5. App Identity Typography Layout Headers
-                    const Text(
-                      'Health & Doctor\nAppointment',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 30,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1A237E), // Professional Dark Navy
-                        letterSpacing: 0.5,
-                        height: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
-                    // 6. Catchy Tagline Messaging Row
-                    const Text(
-                      'Your Health, Your Schedule.',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF555555), // Muted Secondary Grey
-                      ),
-                    ),
-                    const Spacer(flex: 3),
-
-                    // 7. Contextual Baseline Progress Indicator Accent
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFF00796B), width: 2),
-                      ),
-                      child: const Icon(
-                        Icons.medical_services_outlined,
-                        color: Color(0xFF00796B),
-                        size: 28,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // 8. Footer Legal/Branding Metadata
-                    Text(
-                      'Powered by SafeCare Systems',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                        color: Colors.grey.shade600,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.3),
+                    Colors.black.withOpacity(0.5),
                   ],
                 ),
               ),
             ),
-          ),
-        ],
+            SafeArea(
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Spacer(flex: 3),
+                      Container(
+                        width: 140,
+                        height: 140,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 24,
+                              offset: const Offset(0, 12),
+                            ),
+                          ],
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 3,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.local_hospital_rounded,
+                          size: 64,
+                          color: Color(0xFF00796B),
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      const Text(
+                        'Medicore',
+                        style: TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Your Health, Your Schedule',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white.withOpacity(0.9),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const Spacer(flex: 3),
+                      const SizedBox(
+                        width: 28,
+                        height: 28,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

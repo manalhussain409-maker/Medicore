@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Added for cross-checking registered doctors
 import '../services/auth_service.dart';
-import 'admin_home.dart'; // Directly imported for dynamic parameter injection
+import '../services/user_service.dart';
+import '../services/doctor_service.dart';
+import 'admin_home.dart';
+import 'doctor_home.dart';
+import 'patient_home_refactored.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -16,13 +19,14 @@ class _AuthScreenState extends State<AuthScreen> {
   String selectedRole = 'Patient';
   bool isLoading = false;
 
-  // Form State Management
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
   final AuthService _authService = AuthService();
+  final UserService _userService = UserService();
+  final DoctorService _doctorService = DoctorService();
 
   @override
   void dispose() {
@@ -32,8 +36,7 @@ class _AuthScreenState extends State<AuthScreen> {
     super.dispose();
   }
 
-  // Unified execution handler for form validation and backend pipeline
-  void _handleSubmit() async {
+  Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => isLoading = true);
@@ -43,78 +46,78 @@ class _AuthScreenState extends State<AuthScreen> {
     final name = _nameController.text.trim();
 
     if (isLogin) {
-      // --- Firebase Login Implementation ---
-      User? user = await _authService.loginWithEmail(email: email, password: password);
+      final User? user = await _authService.loginWithEmail(
+        email: email,
+        password: password,
+      );
 
       if (user != null) {
-        // Fetch the user's registered role inside Cloud Firestore metadata
-        String? actualRole = await _authService.getUserRole(user.uid);
+        final String? actualRole = await _authService.getUserRole(user.uid);
 
         if (actualRole == selectedRole) {
           if (!mounted) return;
+          await _userService.setUserOnlineStatus(user.uid, true);
 
-          // Grant access: Forward matching account metadata to respective operational panels
           if (actualRole == 'Patient') {
-            Navigator.pushReplacementNamed(context, '/patient_home');
-          }
-          else if (actualRole == 'Doctor' || actualRole == 'Admin') {
-            // DYNAMIC AUTOMATED ROUTING LOGIC FOR ALL REGISTERED DOCTORS
-            String doctorDocId = user.uid; // Fallback to Auth UID
-            String doctorName = "Practitioner Panel";
-
-            try {
-              // Query the 'doctors' database collection using the email string to fetch the correct profile
-              QuerySnapshot docQuery = await FirebaseFirestore.instance
-                  .collection('doctors')
-                  .where('name', isEqualTo: name.isNotEmpty ? name : null)
-                  .limit(1)
-                  .get();
-
-              // Fallback query by name if email isn't directly bound as a field key mapping
-              if (docQuery.docs.isEmpty) {
-                docQuery = await FirebaseFirestore.instance
-                    .collection('doctors')
-                    .limit(50)
-                    .get();
-              }
-
-              // Try to automatically find the record within your created pool matching this login instance
-              if (docQuery.docs.isNotEmpty) {
-                var matchedDoc = docQuery.docs.firstWhere(
-                        (doc) => (doc.data() as Map<String, dynamic>)['name'] != null,
-                    orElse: () => docQuery.docs.first
-                );
-
-                doctorDocId = matchedDoc.id;
-                doctorName = (matchedDoc.data() as Map<String, dynamic>)['name'] ?? 'Doctor Instance';
-              }
-            } catch (e) {
-              debugPrint("Automated profile matching setup log notice: $e");
-            }
-
-            // Direct route replacement passing the dynamically resolved credentials down to the dashboard tabs
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const PatientHomeScreenRefactored(),
+              ),
+            );
+          } else if (actualRole == 'Doctor') {
+            final profile = await _userService.getUserById(user.uid);
+            if (!mounted) return;
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DoctorHomeScreen(
+                  loggedInDoctorId: user.uid,
+                  loggedInDoctorName:
+                      profile?.name ?? (name.isNotEmpty ? name : 'Doctor'),
+                ),
+              ),
+            );
+          } else {
+            final profile = await _userService.getUserById(user.uid);
+            if (!mounted) return;
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
                 builder: (context) => AdminHomeScreen(
-                  loggedInDoctorId: doctorDocId,
-                  loggedInDoctorName: doctorName,
+                  loggedInDoctorId: user.uid,
+                  loggedInDoctorName:
+                      profile?.name ?? (name.isNotEmpty ? name : 'Admin'),
+                  userRole: actualRole ?? 'Admin',
                 ),
               ),
             );
           }
         } else {
-          // Reject entry: Force signout if user tier tries logging into incorrect structural dashboard
           await _authService.signOut();
           if (!mounted) return;
-          _showSnackBar("Access Denied: You do not have permissions for the $selectedRole portal.");
+          _showSnackBar(
+            'Access denied. Your account is registered as $actualRole, not $selectedRole.',
+          );
         }
       } else {
-        _showSnackBar("Authentication failed. Please verify your email and password.");
+        _showSnackBar('Invalid email or password. Please try again.');
       }
     } else {
-      // --- Firebase Registration Implementation ---
-      User? user = await _authService.registerWithEmail(
+      if (selectedRole == 'Doctor') {
+        final hasPending = await _doctorService.hasPendingDoctor(email);
+        if (!hasPending) {
+          if (mounted) {
+            setState(() => isLoading = false);
+            _showSnackBar(
+              'You cannot register as a Doctor. Only emails added by the Admin can register.',
+            );
+          }
+          return;
+        }
+      }
+
+      final User? user = await _authService.registerWithEmail(
         name: name,
         email: email,
         password: password,
@@ -122,30 +125,35 @@ class _AuthScreenState extends State<AuthScreen> {
       );
 
       if (user != null) {
-        // If registering a doctor, also create their practitioner document inside the collection dynamically
-        if (selectedRole == 'Doctor') {
-          await FirebaseFirestore.instance.collection('doctors').doc(user.uid).set({
-            'name': name,
-            'specialty': 'General Physician', // Default value editable via workspace later
-            'experience': '1',
-            'fee': '500',
-            'imageUrl': 'https://cdn-icons-png.flaticon.com/512/387/387561.png',
-            'availableDays': ['Mon', 'Wed', 'Fri'],
-            'availableSlots': ['09:00 AM', '11:00 AM', '03:00 PM']
-          });
-        }
-
-        _showSnackBar("Account created successfully! Please sign in.");
+        _showSnackBar('Account created! Please sign in.');
         setState(() {
-          isLogin = true; // Reset component configuration seamlessly to Sign-In configuration
+          isLogin = true;
           _nameController.clear();
         });
       } else {
-        _showSnackBar("Registration failed. This email might already be registered.");
+        _showSnackBar('Registration failed. Email may already be in use.');
       }
     }
 
     if (mounted) setState(() => isLoading = false);
+  }
+
+  Future<void> _handleForgotPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      _showSnackBar('Enter your email address first.');
+      return;
+    }
+    setState(() => isLoading = true);
+    final success = await _authService.resetPassword(email);
+    if (mounted) {
+      setState(() => isLoading = false);
+      _showSnackBar(
+        success
+            ? 'Password reset link sent to $email'
+            : 'Could not send reset email. Check your address.',
+      );
+    }
   }
 
   void _showSnackBar(String message) {
@@ -154,6 +162,7 @@ class _AuthScreenState extends State<AuthScreen> {
         content: Text(message),
         backgroundColor: const Color(0xFF00796B),
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -165,26 +174,38 @@ class _AuthScreenState extends State<AuthScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // 1. Header App Icon
                   Center(
                     child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF00796B),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF00796B), Color(0xFF004D40)],
+                        ),
                         shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF00796B).withOpacity(0.3),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
                       ),
-                      child: const Icon(Icons.local_hospital, color: Colors.white, size: 40),
+                      child: const Icon(
+                        Icons.local_hospital_rounded,
+                        color: Colors.white,
+                        size: 40,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
                   Text(
-                    isLogin ? 'Welcome Back' : 'Create Account',
+                    isLogin ? 'Welcome Back' : 'Join Medicore',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 28,
@@ -195,14 +216,12 @@ class _AuthScreenState extends State<AuthScreen> {
                   const SizedBox(height: 8),
                   Text(
                     isLogin
-                        ? 'Sign in to access your healthcare dashboard'
-                        : 'Join us to manage appointments seamlessly',
+                        ? 'Sign in to your healthcare dashboard'
+                        : 'Create an account to book appointments',
                     textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
                   ),
-                  const SizedBox(height: 30),
-
-                  // 2. Role Selection Toggle Bar
+                  const SizedBox(height: 28),
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.grey.shade200,
@@ -213,19 +232,18 @@ class _AuthScreenState extends State<AuthScreen> {
                       children: [
                         _buildRoleTab('Patient'),
                         _buildRoleTab('Doctor'),
-                        _buildRoleTab('Admin'),
+                        if (isLogin) _buildRoleTab('Admin'),
                       ],
                     ),
                   ),
                   const SizedBox(height: 24),
-
-                  // 3. Dynamic Form Field Injection
                   if (!isLogin) ...[
                     _buildTextField(
                       controller: _nameController,
                       hint: 'Full Name',
                       icon: Icons.person_outline,
-                      validator: (value) => value == null || value.trim().isEmpty ? 'Please enter your name' : null,
+                      validator: (v) =>
+                          v == null || v.trim().isEmpty ? 'Enter your name' : null,
                     ),
                     const SizedBox(height: 16),
                   ],
@@ -234,10 +252,11 @@ class _AuthScreenState extends State<AuthScreen> {
                     hint: 'Email Address',
                     icon: Icons.email_outlined,
                     keyboardType: TextInputType.emailAddress,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) return 'Please enter your email';
-                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-                        return 'Please enter a valid email address';
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return 'Enter your email';
+                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                          .hasMatch(v)) {
+                        return 'Enter a valid email';
                       }
                       return null;
                     },
@@ -248,62 +267,75 @@ class _AuthScreenState extends State<AuthScreen> {
                     hint: 'Password',
                     icon: Icons.lock_outline,
                     isPassword: true,
-                    validator: (value) => value == null || value.length < 6 ? 'Password must be at least 6 characters' : null,
+                    validator: (v) => v == null || v.length < 6
+                        ? 'Password must be at least 6 characters'
+                        : null,
                   ),
-
-                  // Forgot Password Link
                   if (isLogin)
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: () {},
+                        onPressed: isLoading ? null : _handleForgotPassword,
                         child: const Text(
                           'Forgot Password?',
-                          style: TextStyle(color: Color(0xFF00796B), fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            color: Color(0xFF00796B),
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
-                  const SizedBox(height: 24),
-
-                  // 4. Primary Form Submittal Action Control
+                  const SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: isLoading ? null : _handleSubmit,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF00796B),
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       elevation: 2,
                     ),
                     child: isLoading
                         ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                    )
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
                         : Text(
-                      isLogin ? 'Sign In as $selectedRole' : 'Register as $selectedRole',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
+                            isLogin
+                                ? 'Sign In as $selectedRole'
+                                : 'Register as $selectedRole',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
                   ),
                   const SizedBox(height: 24),
-
-                  // 5. Interface Structural Layout Toggle Button Context
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        isLogin ? "Don't have an account? " : "Already have an account? ",
+                        isLogin
+                            ? "Don't have an account? "
+                            : 'Already have an account? ',
                         style: TextStyle(color: Colors.grey.shade600),
                       ),
                       GestureDetector(
-                        onTap: () {
-                          if (!isLoading) {
-                            setState(() {
-                              isLogin = !isLogin;
-                              _formKey.currentState?.reset();
-                            });
-                          }
-                        },
+                        onTap: isLoading
+                            ? null
+                            : () => setState(() {
+                                  isLogin = !isLogin;
+                                  if (!isLogin && selectedRole == 'Admin') {
+                                    selectedRole = 'Patient';
+                                  }
+                                  _formKey.currentState?.reset();
+                                }),
                         child: Text(
                           isLogin ? 'Sign Up' : 'Log In',
                           style: const TextStyle(
@@ -325,13 +357,12 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Widget _buildRoleTab(String role) {
-    bool isSelected = selectedRole == role;
+    final isSelected = selectedRole == role;
     return Expanded(
       child: GestureDetector(
-        onTap: isLoading
-            ? null
-            : () => setState(() => selectedRole = role),
-        child: Container(
+        onTap: isLoading ? null : () => setState(() => selectedRole = role),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             color: isSelected ? const Color(0xFF00796B) : Colors.transparent,
@@ -343,7 +374,7 @@ class _AuthScreenState extends State<AuthScreen> {
             style: TextStyle(
               color: isSelected ? Colors.white : Colors.grey.shade700,
               fontWeight: FontWeight.bold,
-              fontSize: 14,
+              fontSize: 13,
             ),
           ),
         ),
@@ -376,19 +407,11 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade200, width: 1),
+          borderSide: BorderSide(color: Colors.grey.shade200),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Color(0xFF00796B), width: 1.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red, width: 1),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red, width: 1.5),
         ),
       ),
     );

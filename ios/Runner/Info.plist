@@ -26,6 +26,17 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Medliy needs camera access for video calls with your doctor.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Medliy needs microphone access for voice and video calls.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Medliy needs local network access for video calls.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_http._tcp</string>
+		<string>_https._tcp</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

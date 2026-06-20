@@ -1,3 +1,5 @@
+import '../utils/firestore_utils.dart';
+
 class AppointmentModel {
   final String id;
   final String patientId;
@@ -38,21 +40,15 @@ class AppointmentModel {
       doctorId: map['doctorId'] ?? '',
       patientName: map['patientName'] ?? '',
       doctorName: map['doctorName'] ?? '',
-      appointmentDate: DateTime.parse(
-        map['appointmentDate'] ?? DateTime.now().toIso8601String(),
-      ),
+      appointmentDate: parseFirestoreDateOrNow(map['appointmentDate']),
       timeSlot: map['timeSlot'] ?? '10:00 AM',
       status: map['status'] ?? 'Pending',
       notes: map['notes'],
       prescription: map['prescription'],
       consultationFee: (map['consultationFee'] ?? 0).toDouble(),
       isPaid: map['isPaid'] ?? false,
-      createdAt: DateTime.parse(
-        map['createdAt'] ?? DateTime.now().toIso8601String(),
-      ),
-      completedAt: map['completedAt'] != null
-          ? DateTime.parse(map['completedAt'])
-          : null,
+      createdAt: parseFirestoreDateOrNow(map['createdAt']),
+      completedAt: parseFirestoreDate(map['completedAt']),
     );
   }
 

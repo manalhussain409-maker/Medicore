@@ -1,3 +1,5 @@
+import '../utils/firestore_utils.dart';
+
 class MessageModel {
   final String id;
   final String chatRoomId;
@@ -31,9 +33,7 @@ class MessageModel {
       senderName: map['senderName'] ?? 'User',
       senderImage: map['senderImage'] ?? '',
       message: map['message'] ?? '',
-      timestamp: DateTime.parse(
-        map['timestamp'] ?? DateTime.now().toIso8601String(),
-      ),
+      timestamp: parseFirestoreDateOrNow(map['timestamp']),
       isRead: map['isRead'] ?? false,
       fileUrl: map['fileUrl'],
       fileType: map['fileType'],

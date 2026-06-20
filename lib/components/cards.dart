@@ -1,8 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/doctor_model.dart';
 import '../models/appointment_model.dart';
 
-// Doctor Card Component
 class DoctorCard extends StatelessWidget {
   final DoctorModel doctor;
   final VoidCallback onBook;
@@ -10,29 +11,30 @@ class DoctorCard extends StatelessWidget {
   final bool hasActiveAppointment;
 
   const DoctorCard({
-    Key? key,
+    super.key,
     required this.doctor,
     required this.onBook,
     required this.onChat,
     this.hasActiveAppointment = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
+    final availableDaysStr = doctor.availableDays.join(', ');
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 10),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.01), blurRadius: 10),
         ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Row(
           children: [
-            // Doctor Image
             Container(
               width: 70,
               height: 70,
@@ -42,21 +44,10 @@ class DoctorCard extends StatelessWidget {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(14),
-                child:
-                    (doctor.imageUrl.isNotEmpty &&
-                        doctor.imageUrl != 'placeholder')
-                    ? Image.network(
-                        doctor.imageUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) =>
-                            const Icon(Icons.person, color: Color(0xFF008080)),
-                      )
-                    : const Icon(Icons.person, color: Color(0xFF008080)),
+                child: _buildDoctorImage(doctor.imageUrl),
               ),
             ),
             const SizedBox(width: 14),
-
-            // Doctor Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -92,9 +83,9 @@ class DoctorCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.star, size: 14, color: Colors.amber),
+                      const Icon(Icons.star, size: 14, color: Colors.amber),
                       Text(
-                        ' ${doctor.rating.toStringAsFixed(1)} • ${doctor.totalReviews ?? 0} reviews',
+                        ' ${doctor.rating.toStringAsFixed(1)} - ${doctor.totalReviews ?? 0} reviews',
                         style: const TextStyle(
                           color: Colors.black54,
                           fontSize: 12,
@@ -105,19 +96,27 @@ class DoctorCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Rs. ${doctor.fee} • ${doctor.experience} Yrs',
+                    'Rs. ${doctor.fee} - ${doctor.experience} Yrs',
                     style: const TextStyle(
                       color: Colors.black54,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
+                  if (availableDaysStr.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Available: $availableDaysStr',
+                      style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
             const SizedBox(width: 12),
-
-            // Action Buttons
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -147,21 +146,15 @@ class DoctorCard extends StatelessWidget {
                 IconButton(
                   onPressed: onChat,
                   style: IconButton.styleFrom(
-                    backgroundColor: hasActiveAppointment
-                        ? const Color(0xFF008080).withOpacity(0.1)
-                        : Colors.grey.shade100,
+                    backgroundColor: const Color(0xFF008080).withValues(alpha: 0.1),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
                     padding: const EdgeInsets.all(12),
                   ),
-                  icon: Icon(
-                    hasActiveAppointment
-                        ? Icons.chat_bubble_rounded
-                        : Icons.lock_rounded,
-                    color: hasActiveAppointment
-                        ? const Color(0xFF008080)
-                        : Colors.grey.shade400,
+                  icon: const Icon(
+                    Icons.chat_bubble_rounded,
+                    color: Color(0xFF008080),
                     size: 20,
                   ),
                 ),
@@ -172,9 +165,41 @@ class DoctorCard extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildDoctorImage(String? imageUrl) {
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      if (imageUrl.startsWith('data:image')) {
+        try {
+          final base64Str = imageUrl.split(',').last;
+          return Image.memory(
+            base64Decode(base64Str),
+            width: 70,
+            height: 70,
+            fit: BoxFit.cover,
+          );
+        } catch (e) {
+          return const Icon(Icons.person, color: Color(0xFF008080));
+        }
+      }
+      return CachedNetworkImage(
+        imageUrl: imageUrl,
+        width: 70,
+        height: 70,
+        fit: BoxFit.cover,
+        placeholder: (context, url) => const Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFF008080),
+            strokeWidth: 2,
+          ),
+        ),
+        errorWidget: (context, url, error) =>
+            const Icon(Icons.person, color: Color(0xFF008080)),
+      );
+    }
+    return const Icon(Icons.person, color: Color(0xFF008080));
+  }
 }
 
-// Appointment Card Component
 class AppointmentCard extends StatelessWidget {
   final AppointmentModel appointment;
   final VoidCallback? onDetails;
@@ -182,30 +207,32 @@ class AppointmentCard extends StatelessWidget {
   final VoidCallback? onReschedule;
 
   const AppointmentCard({
-    Key? key,
+    super.key,
     required this.appointment,
     this.onDetails,
     this.onCancel,
     this.onReschedule,
-  }) : super(key: key);
+  });
 
-  String _getStatusColor(String status) {
+  Color _getStatusColor(String status) {
     switch (status) {
       case 'Confirmed':
-        return '#4CAF50';
+        return const Color(0xFF4CAF50);
       case 'Pending':
-        return '#FFC107';
+        return const Color(0xFFFFC107);
       case 'Completed':
-        return '#2196F3';
+        return const Color(0xFF2196F3);
       case 'Cancelled':
-        return '#F44336';
+        return const Color(0xFFF44336);
       default:
-        return '#9E9E9E';
+        return const Color(0xFF9E9E9E);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final statusColor = _getStatusColor(appointment.status);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -213,7 +240,7 @@ class AppointmentCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -224,7 +251,6 @@ class AppointmentCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -257,11 +283,7 @@ class AppointmentCard extends StatelessWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Color(
-                      int.parse(
-                        '0xFF${_getStatusColor(appointment.status).replaceFirst('#', '')}',
-                      ),
-                    ).withOpacity(0.1),
+                    color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -269,19 +291,13 @@ class AppointmentCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: Color(
-                        int.parse(
-                          '0xFF${_getStatusColor(appointment.status).replaceFirst('#', '')}',
-                        ),
-                      ),
+                      color: statusColor,
                     ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-
-            // Date & Time
             Row(
               children: [
                 Icon(
@@ -299,8 +315,6 @@ class AppointmentCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-
-            // Fee
             if (appointment.consultationFee != null)
               Row(
                 children: [
@@ -326,7 +340,7 @@ class AppointmentCard extends StatelessWidget {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.1),
+                        color: Colors.green.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: const Text(
@@ -341,56 +355,71 @@ class AppointmentCard extends StatelessWidget {
                 ],
               ),
             const SizedBox(height: 12),
-
-            // Action Buttons
-            if (appointment.status != 'Completed' &&
-                appointment.status != 'Cancelled')
-              Row(
-                children: [
-                  if (onCancel != null)
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: onCancel,
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Colors.red),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: const Text(
-                          'Cancel',
-                          style: TextStyle(
-                            color: Colors.red,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: appointment.status != 'Completed' &&
+                            appointment.status != 'Cancelled'
+                        ? onCancel
+                        : null,
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(
+                        color: appointment.status != 'Completed' &&
+                                appointment.status != 'Cancelled'
+                            ? Colors.red
+                            : Colors.grey.shade300,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                  if (onCancel != null && onReschedule != null)
-                    const SizedBox(width: 8),
-                  if (onReschedule != null)
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: onReschedule,
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0xFF008080)),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: const Text(
-                          'Reschedule',
-                          style: TextStyle(
-                            color: Color(0xFF008080),
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(
+                        color: appointment.status != 'Completed' &&
+                                appointment.status != 'Cancelled'
+                            ? Colors.red
+                            : Colors.grey.shade400,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                ],
-              ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: appointment.status != 'Completed' &&
+                            appointment.status != 'Cancelled'
+                        ? onReschedule
+                        : null,
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(
+                        color: appointment.status != 'Completed' &&
+                                appointment.status != 'Cancelled'
+                            ? const Color(0xFF008080)
+                            : Colors.grey.shade300,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Text(
+                      'Reschedule',
+                      style: TextStyle(
+                        color: appointment.status != 'Completed' &&
+                                appointment.status != 'Cancelled'
+                            ? const Color(0xFF008080)
+                            : Colors.grey.shade400,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),

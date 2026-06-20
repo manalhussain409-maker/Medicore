@@ -11,10 +11,8 @@ class UserService {
     try {
       User? user = _auth.currentUser;
       if (user != null) {
-        DocumentSnapshot doc = await _firestore
-            .collection('users')
-            .doc(user.uid)
-            .get();
+        DocumentSnapshot doc =
+            await _firestore.collection('users').doc(user.uid).get();
 
         if (doc.exists && doc.data() != null) {
           return UserModel.fromMap(doc.data() as Map<String, dynamic>);
@@ -29,10 +27,8 @@ class UserService {
   // Get user by ID
   Future<UserModel?> getUserById(String userId) async {
     try {
-      DocumentSnapshot doc = await _firestore
-          .collection('users')
-          .doc(userId)
-          .get();
+      DocumentSnapshot doc =
+          await _firestore.collection('users').doc(userId).get();
 
       if (doc.exists && doc.data() != null) {
         return UserModel.fromMap(doc.data() as Map<String, dynamic>);
@@ -62,8 +58,9 @@ class UserService {
       if (phoneNumber != null) updates['phoneNumber'] = phoneNumber;
       if (profileImageUrl != null) updates['profileImageUrl'] = profileImageUrl;
       if (gender != null) updates['gender'] = gender;
-      if (dateOfBirth != null)
+      if (dateOfBirth != null) {
         updates['dateOfBirth'] = dateOfBirth.toIso8601String();
+      }
       if (address != null) updates['address'] = address;
       if (city != null) updates['city'] = city;
       if (bio != null) updates['bio'] = bio;
@@ -92,7 +89,7 @@ class UserService {
       final snapshot = await _firestore
           .collection('users')
           .where('name', isGreaterThanOrEqualTo: query)
-          .where('name', isLessThan: query + 'z')
+          .where('name', isLessThan: '${query}z')
           .get();
 
       return snapshot.docs.map((doc) => UserModel.fromMap(doc.data())).toList();
@@ -144,10 +141,8 @@ class UserService {
   // Check if user exists
   Future<bool> userExists(String userId) async {
     try {
-      DocumentSnapshot doc = await _firestore
-          .collection('users')
-          .doc(userId)
-          .get();
+      DocumentSnapshot doc =
+          await _firestore.collection('users').doc(userId).get();
       return doc.exists;
     } catch (e) {
       throw Exception('Error checking user existence: $e');

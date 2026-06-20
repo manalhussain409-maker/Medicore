@@ -1,128 +1,130 @@
 import '../utils/firestore_utils.dart';
 
-class UserModel {
+class PatientModel {
   final String uid;
   final String name;
   final String email;
-  final String role; // 'Patient', 'Doctor', or 'Admin'
   final String? phoneNumber;
   final String? profileImageUrl;
   final String? gender;
   final DateTime? dateOfBirth;
   final String? address;
   final String? city;
+  final String? bloodGroup;
+  final List<String>? allergies;
+  final List<String>? medicalHistory;
+  final String? emergencyContact;
+  final String? insuranceProvider;
   final bool isOnline;
   final DateTime? lastSeen;
   final DateTime? createdAt;
-  final String? bio;
-  final String? specialty;
-  final String? experience;
-  final String? fee;
 
-  UserModel({
+  PatientModel({
     required this.uid,
     required this.name,
     required this.email,
-    required this.role,
     this.phoneNumber,
     this.profileImageUrl,
     this.gender,
     this.dateOfBirth,
     this.address,
     this.city,
+    this.bloodGroup,
+    this.allergies,
+    this.medicalHistory,
+    this.emergencyContact,
+    this.insuranceProvider,
     this.isOnline = false,
     this.lastSeen,
     this.createdAt,
-    this.bio,
-    this.specialty,
-    this.experience,
-    this.fee,
   });
 
-  // Convert Firebase Firestore Document Data into our Flutter Model
-  factory UserModel.fromMap(Map<String, dynamic> map) {
-    return UserModel(
+  factory PatientModel.fromMap(Map<String, dynamic> map) {
+    return PatientModel(
       uid: map['uid'] ?? '',
       name: map['name'] ?? '',
       email: map['email'] ?? '',
-      role: map['role'] ?? 'Patient',
       phoneNumber: map['phoneNumber'],
       profileImageUrl: map['profileImageUrl'],
       gender: map['gender'],
       dateOfBirth: parseFirestoreDate(map['dateOfBirth']),
       address: map['address'],
       city: map['city'],
+      bloodGroup: map['bloodGroup'],
+      allergies: map['allergies'] != null
+          ? List<String>.from(map['allergies'])
+          : null,
+      medicalHistory: map['medicalHistory'] != null
+          ? List<String>.from(map['medicalHistory'])
+          : null,
+      emergencyContact: map['emergencyContact'],
+      insuranceProvider: map['insuranceProvider'],
       isOnline: map['isOnline'] ?? false,
       lastSeen: parseFirestoreDate(map['lastSeen']),
       createdAt: parseFirestoreDate(map['createdAt']),
-      bio: map['bio'],
-      specialty: map['specialty'],
-      experience: map['experience'],
-      fee: map['fee'],
     );
   }
 
-  // Convert our Flutter Model into a Map format to save into Firestore
   Map<String, dynamic> toMap() {
     return {
       'uid': uid,
       'name': name,
       'email': email,
-      'role': role,
+      'role': 'Patient',
       'phoneNumber': phoneNumber,
       'profileImageUrl': profileImageUrl,
       'gender': gender,
       'dateOfBirth': dateOfBirth?.toIso8601String(),
       'address': address,
       'city': city,
+      'bloodGroup': bloodGroup,
+      'allergies': allergies,
+      'medicalHistory': medicalHistory,
+      'emergencyContact': emergencyContact,
+      'insuranceProvider': insuranceProvider,
       'isOnline': isOnline,
       'lastSeen': lastSeen?.toIso8601String(),
       'createdAt': createdAt?.toIso8601String(),
-      'bio': bio,
-      'specialty': specialty,
-      'experience': experience,
-      'fee': fee,
     };
   }
 
-  // Copy with method for easy updates
-  UserModel copyWith({
+  PatientModel copyWith({
     String? uid,
     String? name,
     String? email,
-    String? role,
     String? phoneNumber,
     String? profileImageUrl,
     String? gender,
     DateTime? dateOfBirth,
     String? address,
     String? city,
+    String? bloodGroup,
+    List<String>? allergies,
+    List<String>? medicalHistory,
+    String? emergencyContact,
+    String? insuranceProvider,
     bool? isOnline,
     DateTime? lastSeen,
     DateTime? createdAt,
-    String? bio,
-    String? specialty,
-    String? experience,
-    String? fee,
   }) {
-    return UserModel(
+    return PatientModel(
       uid: uid ?? this.uid,
       name: name ?? this.name,
       email: email ?? this.email,
-      role: role ?? this.role,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       gender: gender ?? this.gender,
       dateOfBirth: dateOfBirth ?? this.dateOfBirth,
       address: address ?? this.address,
       city: city ?? this.city,
+      bloodGroup: bloodGroup ?? this.bloodGroup,
+      allergies: allergies ?? this.allergies,
+      medicalHistory: medicalHistory ?? this.medicalHistory,
+      emergencyContact: emergencyContact ?? this.emergencyContact,
+      insuranceProvider: insuranceProvider ?? this.insuranceProvider,
       isOnline: isOnline ?? this.isOnline,
       lastSeen: lastSeen ?? this.lastSeen,
       createdAt: createdAt ?? this.createdAt,
-      bio: bio ?? this.bio,
-      specialty: specialty ?? this.specialty,
-      experience: experience ?? this.experience,
-      fee: fee ?? this.fee,
     );
   }
 }

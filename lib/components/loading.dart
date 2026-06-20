@@ -7,11 +7,11 @@ class ShimmerLoading extends StatefulWidget {
   final double borderRadius;
 
   const ShimmerLoading({
-    Key? key,
+    super.key,
     this.height = 20,
     this.width = double.infinity,
     this.borderRadius = 8,
-  }) : super(key: key);
+  });
 
   @override
   State<ShimmerLoading> createState() => _ShimmerLoadingState();
@@ -62,7 +62,7 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
 
 // Doctor Card Shimmer
 class DoctorCardShimmer extends StatelessWidget {
-  const DoctorCardShimmer({Key? key}) : super(key: key);
+  const DoctorCardShimmer({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -76,18 +76,18 @@ class DoctorCardShimmer extends StatelessWidget {
           BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 10),
         ],
       ),
-      child: Row(
+      child: const Row(
         children: [
           ShimmerLoading(height: 70, width: 70, borderRadius: 14),
-          const SizedBox(width: 14),
+          SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ShimmerLoading(height: 16, width: 150, borderRadius: 8),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 ShimmerLoading(height: 14, width: 100, borderRadius: 8),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 ShimmerLoading(height: 12, width: 120, borderRadius: 8),
               ],
             ),
@@ -100,7 +100,7 @@ class DoctorCardShimmer extends StatelessWidget {
 
 // Appointment Card Shimmer
 class AppointmentCardShimmer extends StatelessWidget {
-  const AppointmentCardShimmer({Key? key}) : super(key: key);
+  const AppointmentCardShimmer({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -111,7 +111,7 @@ class AppointmentCardShimmer extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
       ),
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -122,7 +122,7 @@ class AppointmentCardShimmer extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     ShimmerLoading(height: 16, width: 150, borderRadius: 8),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     ShimmerLoading(height: 14, width: 120, borderRadius: 8),
                   ],
                 ),
@@ -130,7 +130,7 @@ class AppointmentCardShimmer extends StatelessWidget {
               ShimmerLoading(height: 24, width: 60, borderRadius: 8),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           ShimmerLoading(height: 12, width: 200, borderRadius: 8),
         ],
       ),
@@ -142,8 +142,7 @@ class AppointmentCardShimmer extends StatelessWidget {
 class LoadingDialog extends StatelessWidget {
   final String message;
 
-  const LoadingDialog({Key? key, this.message = 'Loading...'})
-    : super(key: key);
+  const LoadingDialog({super.key, this.message = 'Loading...'});
 
   @override
   Widget build(BuildContext context) {

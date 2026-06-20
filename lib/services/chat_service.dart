@@ -51,11 +51,12 @@ class ChatService {
     required String senderName,
     required String senderImage,
     required String message,
+    String? fileUrl,
+    String? fileType,
   }) async {
     try {
       final messageId = _firestore.collection('temp').doc().id;
 
-      // Add message to subcollection
       await _firestore
           .collection('chats')
           .doc(chatRoomId)
@@ -70,9 +71,10 @@ class ChatService {
             'message': message,
             'timestamp': FieldValue.serverTimestamp(),
             'isRead': false,
+            if (fileUrl != null) 'fileUrl': fileUrl,
+            if (fileType != null) 'fileType': fileType,
           });
 
-      // Update last message in chat room
       await _firestore.collection('chats').doc(chatRoomId).update({
         'lastMessage': message,
         'lastMessageTime': FieldValue.serverTimestamp(),
@@ -88,12 +90,15 @@ class ChatService {
       return _firestore
           .collection('chats')
           .where('participants', arrayContains: userId)
-          .orderBy('lastMessageTime', descending: true)
           .snapshots()
           .map((snapshot) {
-            return snapshot.docs
+            final rooms = snapshot.docs
                 .map((doc) => ChatRoomModel.fromMap(doc.data(), docId: doc.id))
                 .toList();
+            rooms.sort(
+              (a, b) => b.lastMessageTime.compareTo(a.lastMessageTime),
+            );
+            return rooms;
           });
     } catch (e) {
       throw Exception('Error fetching chat rooms: $e');

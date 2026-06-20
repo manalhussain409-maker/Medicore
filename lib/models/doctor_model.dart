@@ -1,12 +1,13 @@
+import '../utils/firestore_utils.dart';
+
 class DoctorModel {
-  final String id;
+  final String uid;
   final String name;
   final String specialty;
   final String experience;
   final String fee;
-  final String imageUrl;
-  final List<String> availableDays;
-  final List<String> availableSlots;
+  final String? imageUrl;
+  final Map<String, List<String>> availability;
   final double rating;
   final String? bio;
   final String? phoneNumber;
@@ -19,14 +20,13 @@ class DoctorModel {
   final DateTime? createdAt;
 
   DoctorModel({
-    required this.id,
+    required this.uid,
     required this.name,
     required this.specialty,
     required this.experience,
     required this.fee,
-    required this.imageUrl,
-    required this.availableDays,
-    required this.availableSlots,
+    this.imageUrl,
+    required this.availability,
     required this.rating,
     this.bio,
     this.phoneNumber,
@@ -39,17 +39,21 @@ class DoctorModel {
     this.createdAt,
   });
 
-  // Convert a DoctorModel instance into a Map to save to Firebase Firestore
+  List<String> get availableDays => availability.keys.toList();
+
+  List<String> getSlotsForDay(String dayName) {
+    return availability[dayName] ?? [];
+  }
+
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
+      'uid': uid,
       'name': name,
       'specialty': specialty,
       'experience': experience,
       'fee': fee,
       'imageUrl': imageUrl,
-      'availableDays': availableDays,
-      'availableSlots': availableSlots,
+      'availability': availability,
       'rating': rating,
       'bio': bio,
       'phoneNumber': phoneNumber,
@@ -63,17 +67,35 @@ class DoctorModel {
     };
   }
 
-  // Factory constructor to safely create a DoctorModel from a Firestore Document Snapshot
   factory DoctorModel.fromMap(Map<String, dynamic> map, {String? docId}) {
+    Map<String, List<String>> parsedAvailability = {};
+
+    if (map['availability'] != null && map['availability'] is Map) {
+      final raw = map['availability'] as Map;
+      raw.forEach((key, value) {
+        if (value is List) {
+          parsedAvailability[key.toString()] =
+              List<String>.from(value.map((e) => e.toString()));
+        }
+      });
+    } else {
+      final days = List<String>.from(map['availableDays'] ?? []);
+      final slots = List<String>.from(map['availableSlots'] ?? []);
+      if (days.isNotEmpty && slots.isNotEmpty) {
+        for (final day in days) {
+          parsedAvailability[day] = List<String>.from(slots);
+        }
+      }
+    }
+
     return DoctorModel(
-      id: map['id'] ?? docId ?? '',
+      uid: map['uid'] ?? docId ?? '',
       name: map['name'] ?? 'Unknown Doctor',
       specialty: map['specialty'] ?? 'General Physician',
       experience: map['experience'] ?? '0 Years',
       fee: map['fee'] ?? 'Rs. 0',
-      imageUrl: map['imageUrl'] ?? 'placeholder',
-      availableDays: List<String>.from(map['availableDays'] ?? []),
-      availableSlots: List<String>.from(map['availableSlots'] ?? []),
+      imageUrl: map['imageUrl'],
+      availability: parsedAvailability,
       rating: (map['rating'] ?? 5.0).toDouble(),
       bio: map['bio'],
       phoneNumber: map['phoneNumber'],
@@ -83,21 +105,18 @@ class DoctorModel {
       totalAppointments: map['totalAppointments'] ?? 0,
       isVerified: map['isVerified'] ?? false,
       isAvailable: map['isAvailable'] ?? true,
-      createdAt: map['createdAt'] != null
-          ? DateTime.parse(map['createdAt'])
-          : null,
+      createdAt: parseFirestoreDate(map['createdAt']),
     );
   }
 
   DoctorModel copyWith({
-    String? id,
+    String? uid,
     String? name,
     String? specialty,
     String? experience,
     String? fee,
     String? imageUrl,
-    List<String>? availableDays,
-    List<String>? availableSlots,
+    Map<String, List<String>>? availability,
     double? rating,
     String? bio,
     String? phoneNumber,
@@ -110,14 +129,13 @@ class DoctorModel {
     DateTime? createdAt,
   }) {
     return DoctorModel(
-      id: id ?? this.id,
+      uid: uid ?? this.uid,
       name: name ?? this.name,
       specialty: specialty ?? this.specialty,
       experience: experience ?? this.experience,
       fee: fee ?? this.fee,
       imageUrl: imageUrl ?? this.imageUrl,
-      availableDays: availableDays ?? this.availableDays,
-      availableSlots: availableSlots ?? this.availableSlots,
+      availability: availability ?? this.availability,
       rating: rating ?? this.rating,
       bio: bio ?? this.bio,
       phoneNumber: phoneNumber ?? this.phoneNumber,
